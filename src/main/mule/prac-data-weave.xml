@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="c6e6b0b5-2391-4b38-b2df-e995c8d78838" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="7a6fa713-40bf-4a59-b31c-1ed46b4bbaf7" />
+	<flow name="prac-data-weaveFlow" doc:id="2965b394-6d61-4f7b-9499-d636d7b821f1" >
+		<http:listener doc:name="Listener" doc:id="72615dcc-8f17-49f9-8b73-14023fe29692" config-ref="HTTP_Listener_config" path="/prac-weave"/>
+		<ee:transform doc:name="Transform Message" doc:id="aef6f87e-f083-428d-90bd-5e3e3ecd1065" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="storeQueryParms" ><![CDATA[%dw 2.0
+output application/json
+var page = (attributes.queryParams.page as Number) default 1
+var size = (attributes.queryParams.size as Number) default 10
+---
+{
+	page: page,
+	size: size
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<file:read doc:name="Read" doc:id="1b167ce6-d535-416d-a307-35bb2e9b2357" config-ref="File_Config" path="C:\Users\Administrator\Downloads\data.csv" target="read-file"/>
+		<ee:transform doc:name="Transform Message" doc:id="d8486c47-4b1f-43df-bf1f-3bc4df3414b5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var page = (vars.storeQueryParms.page)
+var size = (vars.storeQueryParms.size)
+var data = vars."read-file"
+var startIndex = (page - 1) * size
+var endIndex = (startIndex + size)
+
+---
+{
+    totalItems: sizeOf(data),
+    data: data[startIndex to (endIndex - 1)]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
